@@ -2,7 +2,7 @@ import os
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# ТОКЕН ПРЯМО В КОДЕ - ЭТО ГЛАВНОЕ!
+# ТОКЕН ПРЯМО В КОДЕ
 BOT_TOKEN = "8624134875:AAFuCFt28W93rjOlBlkwlVGIAzhphTKPHEI"
 
 print("🚀 ЗАПУСК ТЕСТОВОГО БОТА")
