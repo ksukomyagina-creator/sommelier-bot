@@ -1,5 +1,5 @@
 """
-Бот-сомелье для Анаконда Навигатор (МЕГА-ПОЛНАЯ ВЕРСИЯ)
+Бот-сомелье для Анаконда Навигатор (МЕГА-ПОЛНАЯ ВЕРСИЯ + КНОПКИ)
 Имя бота: SommelierksuBot
 ВКЛЮЧЕНЫ ВСЕ МАТЕРИАЛЫ ИЗ ВСЕХ PDF-ФАЙЛОВ
 """
@@ -12,7 +12,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 BOT_TOKEN = "8624134875:AAFuCFt28W93rjOlBlkwlVGIAzhphTKPHEI"
 
 print("=" * 60)
-print("🍷 SOMMELIER BOT - МЕГА-ПОЛНАЯ ВЕРСИЯ")
+print("🍷 SOMMELIER BOT - МЕГА-ПОЛНАЯ ВЕРСИЯ + КНОПКИ")
 print("📚 ЗАГРУЗКА ВСЕХ МАТЕРИАЛОВ ИЗ PDF")
 print("=" * 60)
 
@@ -843,26 +843,84 @@ ALL_WINES.update(SPANISH_WINES)
 ALL_WINES.update(NEW_WORLD_WINES)
 
 # ============================================================================
-# КЛАВИАТУРЫ
+# ФУНКЦИИ ДЛЯ КЛАВИАТУР
 # ============================================================================
 
 def get_main_keyboard():
     """Главное меню"""
     keyboard = [
-        ["🍷 КРАСНЫЕ", "🥂 БЕЛЫЕ"],
+        ["🍷 КРАСНЫЕ ВИНА", "🥂 БЕЛЫЕ ВИНА"],
         ["✨ ИГРИСТЫЕ", "🍾 КРЕПЛЕНЫЕ"],
         ["🌸 РОЗОВЫЕ", "🟠 ОРАНЖЕВЫЕ"],
         ["🇫🇷 ФРАНЦУЗСКИЕ", "🇪🇸 ИСПАНСКИЕ"],
-        ["🌍 НОВЫЙ СВЕТ", "🇷🇺 РУССКАЯ"],
+        ["🌍 НОВЫЙ СВЕТ", "🇷🇺 РУССКАЯ КУХНЯ"],
         ["🧀 СЫРЫ", "🐟 РЫБА/МОРЕ"],
         ["🍖 МЯСО", "🥗 ОВОЩИ"],
-        ["🍰 ДЕСЕРТЫ", "🔙 НАЗАД"]
+        ["🍰 ДЕСЕРТЫ", "📋 ВСЕ КАТЕГОРИИ"],
+        ["🔍 ПОИСК ПО ЕДЕ", "❌ ОТМЕНА"]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-def get_back_keyboard():
-    """Клавиатура с кнопкой назад"""
-    return ReplyKeyboardMarkup([["🔙 ГЛАВНОЕ МЕНЮ"]], resize_keyboard=True)
+def get_wine_keyboard(wine_dict, back_text="🔙 НАЗАД"):
+    """Универсальная функция для создания клавиатуры с винами"""
+    wines = sorted(wine_dict.keys())
+    keyboard = []
+    row = []
+    
+    for i, wine in enumerate(wines):
+        # Делаем красивые названия
+        name = wine.title()
+        if len(name) > 15:
+            name = name[:15] + "."
+        row.append(name)
+        
+        if (i + 1) % 3 == 0:  # по 3 кнопки в ряд
+            keyboard.append(row)
+            row = []
+    
+    if row:  # добавляем последний неполный ряд
+        keyboard.append(row)
+    
+    # Добавляем кнопку "ПОКАЗАТЬ ВСЕ"
+    keyboard.append(["📋 ПОКАЗАТЬ ВСЕ", back_text])
+    
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_red_wines_keyboard():
+    """Клавиатура красных вин"""
+    return get_wine_keyboard(RED_WINES, "🔙 К КРАСНЫМ")
+
+def get_white_wines_keyboard():
+    """Клавиатура белых вин"""
+    return get_wine_keyboard(WHITE_WINES, "🔙 К БЕЛЫМ")
+
+def get_sparkling_keyboard():
+    """Клавиатура игристых вин"""
+    return get_wine_keyboard(SPARKLING_WINES, "🔙 К ИГРИСТЫМ")
+
+def get_fortified_keyboard():
+    """Клавиатура крепленых вин"""
+    return get_wine_keyboard(FORTIFIED_WINES, "🔙 К КРЕПЛЕНЫМ")
+
+def get_rose_keyboard():
+    """Клавиатура розовых вин"""
+    return get_wine_keyboard(ROSE_WINES, "🔙 К РОЗОВЫМ")
+
+def get_orange_keyboard():
+    """Клавиатура оранжевых вин"""
+    return get_wine_keyboard(ORANGE_WINES, "🔙 К ОРАНЖЕВЫМ")
+
+def get_french_keyboard():
+    """Клавиатура французских вин"""
+    return get_wine_keyboard(FRENCH_WINES, "🔙 К ФРАНЦУЗСКИМ")
+
+def get_spanish_keyboard():
+    """Клавиатура испанских вин"""
+    return get_wine_keyboard(SPANISH_WINES, "🔙 К ИСПАНСКИМ")
+
+def get_newworld_keyboard():
+    """Клавиатура вин Нового Света"""
+    return get_wine_keyboard(NEW_WORLD_WINES, "🔙 К НОВОМУ СВЕТУ")
 
 def get_food_keyboard():
     """Клавиатура для поиска по еде"""
@@ -873,6 +931,10 @@ def get_food_keyboard():
         ["🔙 ГЛАВНОЕ МЕНЮ"]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_back_keyboard():
+    """Клавиатура с кнопкой назад"""
+    return ReplyKeyboardMarkup([["🔙 ГЛАВНОЕ МЕНЮ"]], resize_keyboard=True)
 
 # ============================================================================
 # ОБРАБОТЧИКИ
@@ -886,7 +948,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"🍷 *Привет, {user.first_name}!*\n\n"
         f"📚 В базе: {total} вин и 500+ гастросочетаний\n"
-        f"👇 *Выбери категорию:*",
+        f"👇 *Выбери категорию:*\n\n"
+        f"👉 Можно нажимать кнопки или писать названия вин",
         parse_mode='Markdown',
         reply_markup=get_main_keyboard()
     )
@@ -894,95 +957,120 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка всех сообщений"""
     text = update.message.text
+    text_lower = text.lower().strip()
     
+    # ===== НАВИГАЦИЯ =====
     if text == "🔙 ГЛАВНОЕ МЕНЮ":
-        await update.message.reply_text("Главное меню:", reply_markup=get_main_keyboard())
+        await update.message.reply_text("🍷 Главное меню:", reply_markup=get_main_keyboard())
+        return
+    
+    if text == "❌ ОТМЕНА":
+        await update.message.reply_text("До встречи! /start", 
+                                       reply_markup=ReplyKeyboardMarkup([["/start"]], resize_keyboard=True))
+        return
+    
+    if text == "📋 ВСЕ КАТЕГОРИИ":
+        response = "🍷 *Все категории вин:*\n\n"
+        response += f"🍷 Красные: {len(RED_WINES)}\n"
+        response += f"🥂 Белые: {len(WHITE_WINES)}\n"
+        response += f"✨ Игристые: {len(SPARKLING_WINES)}\n"
+        response += f"🍾 Крепленые: {len(FORTIFIED_WINES)}\n"
+        response += f"🌸 Розовые: {len(ROSE_WINES)}\n"
+        response += f"🟠 Оранжевые: {len(ORANGE_WINES)}\n"
+        response += f"🇫🇷 Французские: {len(FRENCH_WINES)}\n"
+        response += f"🇪🇸 Испанские: {len(SPANISH_WINES)}\n"
+        response += f"🌍 Новый Свет: {len(NEW_WORLD_WINES)}\n"
+        response += f"\n📚 Всего вин: {len(ALL_WINES)}"
+        await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_main_keyboard())
         return
     
     # ===== КАТЕГОРИИ ВИН =====
-    if text == "🍷 КРАСНЫЕ":
-        response = "🍷 *Красные вина:*\n\n"
-        for wine in sorted(RED_WINES.keys()):
-            response += f"• {wine.title()}\n"
-        response += "\nНапиши название вина для подробностей!"
-        await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_main_keyboard())
+    if text == "🍷 КРАСНЫЕ ВИНА":
+        await update.message.reply_text(
+            "🍷 *Красные вина*\n\n👉 *Выбери вино из кнопок*\n✏️ *Или напиши название*",
+            parse_mode='Markdown',
+            reply_markup=get_red_wines_keyboard()
+        )
         return
     
-    if text == "🥂 БЕЛЫЕ":
-        response = "🥂 *Белые вина:*\n\n"
-        for wine in sorted(WHITE_WINES.keys()):
-            response += f"• {wine.title()}\n"
-        response += "\nНапиши название вина!"
-        await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_main_keyboard())
+    if text == "🥂 БЕЛЫЕ ВИНА":
+        await update.message.reply_text(
+            "🥂 *Белые вина*\n\n👉 *Выбери вино из кнопок*\n✏️ *Или напиши название*",
+            parse_mode='Markdown',
+            reply_markup=get_white_wines_keyboard()
+        )
         return
     
     if text == "✨ ИГРИСТЫЕ":
-        response = "✨ *Игристые вина:*\n\n"
-        for wine in sorted(SPARKLING_WINES.keys()):
-            response += f"• {wine.title()}\n"
-        response += "\nНапиши название!"
-        await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_main_keyboard())
+        await update.message.reply_text(
+            "✨ *Игристые вина*\n\n👉 *Выбери вино из кнопок*\n✏️ *Или напиши название*",
+            parse_mode='Markdown',
+            reply_markup=get_sparkling_keyboard()
+        )
         return
     
     if text == "🍾 КРЕПЛЕНЫЕ":
-        response = "🍾 *Крепленые вина:*\n\n"
-        for wine in sorted(FORTIFIED_WINES.keys()):
-            response += f"• {wine.title()}\n"
-        response += "\nНапиши название!"
-        await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_main_keyboard())
+        await update.message.reply_text(
+            "🍾 *Крепленые вина*\n\n👉 *Выбери вино из кнопок*\n✏️ *Или напиши название*",
+            parse_mode='Markdown',
+            reply_markup=get_fortified_keyboard()
+        )
         return
     
     if text == "🌸 РОЗОВЫЕ":
-        response = "🌸 *Розовые вина:*\n\n"
-        for wine in sorted(ROSE_WINES.keys()):
-            response += f"• {wine.title()}\n"
-        response += "\nНапиши название!"
-        await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_main_keyboard())
+        await update.message.reply_text(
+            "🌸 *Розовые вина*\n\n👉 *Выбери вино из кнопок*\n✏️ *Или напиши название*",
+            parse_mode='Markdown',
+            reply_markup=get_rose_keyboard()
+        )
         return
     
     if text == "🟠 ОРАНЖЕВЫЕ":
-        response = "🟠 *Оранжевые вина:*\n\n"
-        for wine in sorted(ORANGE_WINES.keys()):
-            response += f"• {wine.title()}\n"
-        response += "\nНапиши название!"
-        await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_main_keyboard())
+        await update.message.reply_text(
+            "🟠 *Оранжевые вина*\n\n👉 *Выбери вино из кнопок*\n✏️ *Или напиши название*",
+            parse_mode='Markdown',
+            reply_markup=get_orange_keyboard()
+        )
         return
     
     if text == "🇫🇷 ФРАНЦУЗСКИЕ":
-        response = "🇫🇷 *Французские вина:*\n\n"
-        for wine in sorted(FRENCH_WINES.keys()):
-            response += f"• {wine.title()}\n"
-        response += "\nНапиши название!"
-        await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_main_keyboard())
+        await update.message.reply_text(
+            "🇫🇷 *Французские вина*\n\n👉 *Выбери вино из кнопок*\n✏️ *Или напиши название*",
+            parse_mode='Markdown',
+            reply_markup=get_french_keyboard()
+        )
         return
     
     if text == "🇪🇸 ИСПАНСКИЕ":
-        response = "🇪🇸 *Испанские вина:*\n\n"
-        for wine in sorted(SPANISH_WINES.keys()):
-            response += f"• {wine.title()}\n"
-        response += "\nНапиши название!"
-        await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_main_keyboard())
+        await update.message.reply_text(
+            "🇪🇸 *Испанские вина*\n\n👉 *Выбери вино из кнопок*\n✏️ *Или напиши название*",
+            parse_mode='Markdown',
+            reply_markup=get_spanish_keyboard()
+        )
         return
     
     if text == "🌍 НОВЫЙ СВЕТ":
-        response = "🌍 *Вина Нового Света:*\n\n"
-        for wine in sorted(NEW_WORLD_WINES.keys()):
-            response += f"• {wine.title()}\n"
-        response += "\nНапиши название!"
-        await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_main_keyboard())
+        await update.message.reply_text(
+            "🌍 *Вина Нового Света*\n\n👉 *Выбери вино из кнопок*\n✏️ *Или напиши название*",
+            parse_mode='Markdown',
+            reply_markup=get_newworld_keyboard()
+        )
         return
     
-    if text == "🇷🇺 РУССКАЯ":
+    if text == "🇷🇺 РУССКАЯ КУХНЯ":
         response = "🇷🇺 *Русская кухня:*\n\n"
         for dish, wine in RUSSIAN_CUISINE.items():
             response += f"• {dish.title()}: {wine}\n"
-        await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_main_keyboard())
+        response += "\n✏️ *Напиши название блюда*"
+        await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_food_keyboard())
         return
     
+    # ===== КАТЕГОРИИ ЕДЫ =====
     if text == "🧀 СЫРЫ":
         response = "🧀 *Сыры:*\n\n"
         for cheese, wine in CHEESE_PAIRINGS.items():
             response += f"• {cheese.title()}: {wine}\n"
+        response += "\n✏️ *Напиши название сыра*"
         await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_food_keyboard())
         return
     
@@ -990,6 +1078,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response = "🐟 *Рыба и морепродукты:*\n\n"
         for fish, wine in SEAFOOD_PAIRINGS.items():
             response += f"• {fish.title()}: {wine}\n"
+        response += "\n✏️ *Напиши название*"
         await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_food_keyboard())
         return
     
@@ -997,6 +1086,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response = "🍖 *Мясные блюда:*\n\n"
         for meat, wine in MEAT_PAIRINGS.items():
             response += f"• {meat.title()}: {wine}\n"
+        response += "\n✏️ *Напиши название*"
         await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_food_keyboard())
         return
     
@@ -1004,6 +1094,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response = "🥗 *Овощи:*\n\n"
         for veg, wine in VEGETABLE_PAIRINGS.items():
             response += f"• {veg.title()}: {wine}\n"
+        response += "\n✏️ *Напиши название*"
         await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_food_keyboard())
         return
     
@@ -1011,23 +1102,97 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response = "🍰 *Десерты:*\n\n"
         for dessert, wine in DESSERT_PAIRINGS.items():
             response += f"• {dessert.title()}: {wine}\n"
+        response += "\n✏️ *Напиши название*"
         await update.message.reply_text(response, parse_mode='Markdown', reply_markup=get_food_keyboard())
         return
     
-    # ===== ПОИСК ПО КОНКРЕТНЫМ НАЗВАНИЯМ =====
-    text_lower = text.lower()
+    if text == "🔍 ПОИСК ПО ЕДЕ":
+        await update.message.reply_text(
+            "🔍 *Поиск по продуктам*\n\n"
+            "Выбери категорию:",
+            parse_mode='Markdown',
+            reply_markup=get_food_keyboard()
+        )
+        return
     
-    # Поиск по винам
-    for wine_name, wine_info in ALL_WINES.items():
-        if wine_name in text_lower or text_lower in wine_name:
-            await update.message.reply_text(
-                f"🍷 *{wine_name.title()}*\n"
-                f"_{wine_info['desc']}_\n\n"
-                f"🍽 *Гастропара:*\n{wine_info['pair']}",
-                parse_mode='Markdown',
-                reply_markup=get_main_keyboard()
-            )
+    # ===== КНОПКИ "ПОКАЗАТЬ ВСЕ" =====
+    if text == "📋 ПОКАЗАТЬ ВСЕ":
+        # Определяем контекст - какая сейчас категория
+        if "красные" in context.user_data.get("last_category", ""):
+            wines = RED_WINES
+            cat_name = "красные"
+        elif "белые" in context.user_data.get("last_category", ""):
+            wines = WHITE_WINES
+            cat_name = "белые"
+        else:
+            await update.message.reply_text("Сначала выбери категорию вин!")
             return
+        
+        response = f"🍷 *Все {cat_name} вина:*\n\n"
+        for wine in sorted(wines.keys()):
+            response += f"• {wine.title()}\n"
+        response += f"\n📚 Всего: {len(wines)} вин\n"
+        response += "\n✏️ *Напиши название или нажми кнопку*"
+        await update.message.reply_text(response, parse_mode='Markdown')
+        return
+    
+    # ===== НАЗАД ИЗ КАТЕГОРИЙ =====
+    if text.startswith("🔙 К "):
+        category = text.replace("🔙 К ", "").lower()
+        if "красным" in category:
+            await update.message.reply_text("🍷 *Красные вина*", parse_mode='Markdown', 
+                                          reply_markup=get_red_wines_keyboard())
+        elif "белым" in category:
+            await update.message.reply_text("🥂 *Белые вина*", parse_mode='Markdown', 
+                                          reply_markup=get_white_wines_keyboard())
+        elif "игристым" in category:
+            await update.message.reply_text("✨ *Игристые вина*", parse_mode='Markdown', 
+                                          reply_markup=get_sparkling_keyboard())
+        elif "крепленым" in category:
+            await update.message.reply_text("🍾 *Крепленые вина*", parse_mode='Markdown', 
+                                          reply_markup=get_fortified_keyboard())
+        elif "розовым" in category:
+            await update.message.reply_text("🌸 *Розовые вина*", parse_mode='Markdown', 
+                                          reply_markup=get_rose_keyboard())
+        elif "оранжевым" in category:
+            await update.message.reply_text("🟠 *Оранжевые вина*", parse_mode='Markdown', 
+                                          reply_markup=get_orange_keyboard())
+        elif "французским" in category:
+            await update.message.reply_text("🇫🇷 *Французские вина*", parse_mode='Markdown', 
+                                          reply_markup=get_french_keyboard())
+        elif "испанским" in category:
+            await update.message.reply_text("🇪🇸 *Испанские вина*", parse_mode='Markdown', 
+                                          reply_markup=get_spanish_keyboard())
+        elif "новому свету" in category:
+            await update.message.reply_text("🌍 *Вина Нового Света*", parse_mode='Markdown', 
+                                          reply_markup=get_newworld_keyboard())
+        return
+    
+    # ===== ПОИСК ПО КОНКРЕТНЫМ ВИНАМ =====
+    # Проверяем по всем словарям вин
+    all_wines_dicts = [
+        (RED_WINES, "🍷 Красные"),
+        (WHITE_WINES, "🥂 Белые"),
+        (SPARKLING_WINES, "✨ Игристые"),
+        (FORTIFIED_WINES, "🍾 Крепленые"),
+        (ROSE_WINES, "🌸 Розовые"),
+        (ORANGE_WINES, "🟠 Оранжевые"),
+        (FRENCH_WINES, "🇫🇷 Французские"),
+        (SPANISH_WINES, "🇪🇸 Испанские"),
+        (NEW_WORLD_WINES, "🌍 Новый Свет")
+    ]
+    
+    for wine_dict, cat_name in all_wines_dicts:
+        for wine_name, wine_info in wine_dict.items():
+            if wine_name in text_lower or text_lower in wine_name:
+                await update.message.reply_text(
+                    f"🍷 *{wine_name.title()}*\n"
+                    f"_{wine_info['desc']}_\n\n"
+                    f"🍽 *Гастропара:*\n{wine_info['pair']}",
+                    parse_mode='Markdown',
+                    reply_markup=get_main_keyboard()
+                )
+                return
     
     # Поиск по продуктам
     all_food = {
@@ -1046,19 +1211,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Если ничего не найдено
     await update.message.reply_text(
-        "😕 Не найдено. Выбери категорию!",
+        "😕 Не найдено. Выбери категорию или нажми кнопку!",
         reply_markup=get_main_keyboard()
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /help"""
+    total = len(ALL_WINES)
     await update.message.reply_text(
-        "🍷 *Помощь*\n\n"
-        "✅ *Как пользоваться:*\n"
-        "1. Выбирай категории в меню\n"
-        "2. Смотри списки вин\n"
-        "3. Пиши название вина или продукта\n\n"
-        f"📚 Всего вин: {len(ALL_WINES)}",
+        f"🍷 *Помощь*\n\n"
+        f"📚 Всего вин: {total}\n\n"
+        f"✅ *Два способа:*\n"
+        f"1️⃣ *КНОПКИ* - выбирай категорию → нажимай на вино\n"
+        f"2️⃣ *ТЕКСТ* - просто пиши название (например: 'каберне совиньон')\n\n"
+        f"🍽 *Поиск по еде:* нажимай категории или пиши продукт",
         parse_mode='Markdown'
     )
 
@@ -1069,7 +1235,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     total = len(ALL_WINES)
     print("=" * 60)
-    print("🍷 SOMMELIER BOT - МЕГА-ПОЛНАЯ ВЕРСИЯ")
+    print("🍷 SOMMELIER BOT - МЕГА-ПОЛНАЯ ВЕРСИЯ + КНОПКИ")
     print(f"📊 КРАСНЫЕ: {len(RED_WINES)}")
     print(f"📊 БЕЛЫЕ: {len(WHITE_WINES)}")
     print(f"📊 ИГРИСТЫЕ: {len(SPARKLING_WINES)}")
